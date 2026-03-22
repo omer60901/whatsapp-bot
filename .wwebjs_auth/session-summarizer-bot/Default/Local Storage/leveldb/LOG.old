@@ -1,0 +1,15 @@
+2026/03/22-15:07:02.194 36d4 Reusing MANIFEST C:\Users\User\Downloads\whatsapp-summarizer-bot_1\whatsapp-summarizer-bot\.wwebjs_auth\session-summarizer-bot\Default\Local Storage\leveldb/MANIFEST-000001
+2026/03/22-15:07:02.198 36d4 Recovering log #16
+2026/03/22-15:07:02.200 36d4 Reusing old log C:\Users\User\Downloads\whatsapp-summarizer-bot_1\whatsapp-summarizer-bot\.wwebjs_auth\session-summarizer-bot\Default\Local Storage\leveldb/000016.log 
+2026/03/22-15:08:02.207 a1c0 Level-0 table #20: started
+2026/03/22-15:08:02.210 a1c0 Level-0 table #20: 14505 bytes OK
+2026/03/22-15:08:02.212 a1c0 Delete type=0 #16
+2026/03/22-15:08:02.212 a1c0 Compacting 4@0 + 1@1 files
+2026/03/22-15:08:02.216 a1c0 Generated table #21@0: 100 keys, 6573 bytes
+2026/03/22-15:08:02.216 a1c0 Compacted 4@0 + 1@1 files => 6573 bytes
+2026/03/22-15:08:02.216 a1c0 compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/03/22-15:08:02.217 a1c0 Delete type=2 #8
+2026/03/22-15:08:02.217 a1c0 Delete type=2 #11
+2026/03/22-15:08:02.218 a1c0 Delete type=2 #14
+2026/03/22-15:08:02.218 a1c0 Delete type=2 #17
+2026/03/22-15:08:02.218 a1c0 Delete type=2 #20
