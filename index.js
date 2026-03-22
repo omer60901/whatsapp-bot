@@ -348,4 +348,7 @@ async function handleCommand(msg) {
 
 // ─── Start ────────────────────────────────────────────────
 console.log("🚀 Starting WhatsApp Summarizer Bot (Groq - 5 accounts, 7 models!)...");
+// Keep Render happy with a dummy HTTP server
+const http = require("http");
+http.createServer((req, res) => res.end("Bot is running!")).listen(process.env.PORT || 3000);
 client.initialize();
