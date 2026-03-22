@@ -1,18 +1,18 @@
 {
   "name": "whatsapp-summarizer-bot",
   "version": "1.0.0",
-  "description": "WhatsApp bot that summarizes chat history using Claude AI",
+  "description": "WhatsApp bot that summarizes chat history using Groq AI",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js"
   },
   "dependencies": {
-    "@google/generative-ai": "^0.15.0",
+    "@hapi/boom": "^10.0.1",
+    "@whiskeysockets/baileys": "^6.7.9",
     "dotenv": "^17.3.1",
     "groq-sdk": "^1.1.1",
-    "qrcode-terminal": "^0.12.0",
-    "whatsapp-web.js": "^1.23.0"
+    "pino": "^8.21.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.0"
