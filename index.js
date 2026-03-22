@@ -1,8 +1,10 @@
-require("dotenv").config();
-const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } = require("@whiskeysockets/baileys");
-const { Boom } = require("@hapi/boom");
-const Groq = require("groq-sdk");
-const pino = require("pino");
+import "dotenv/config";
+import makeWASocket, { useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } from "@whiskeysockets/baileys";
+import { Boom } from "@hapi/boom";
+import Groq from "groq-sdk";
+import pino from "pino";
+import http from "http";
+import qrcode from "qrcode-terminal";
 
 // ─── Config ───────────────────────────────────────────────
 const GROQ_KEYS = [
@@ -77,15 +79,22 @@ async function startBot() {
     version,
     auth: state,
     logger: pino({ level: "silent" }),
-    printQRInTerminal: true,
   });
 
   sock.ev.on("creds.update", saveCreds);
 
   sock.ev.on("connection.update", (update) => {
-    const { connection, lastDisconnect } = update;
+    const { connection, lastDisconnect, qr } = update;
+
+    if (qr) {
+      console.log("\n📱 סרוק את הQR הזה עם WhatsApp:\n");
+      qrcode.generate(qr, { small: true });
+    }
+
     if (connection === "close") {
-      const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
+      const shouldReconnect = (lastDisconnect?.error instanceof Boom)
+        ? lastDisconnect.error.output.statusCode !== DisconnectReason.loggedOut
+        : true;
       console.log("❌ התנתק. מתחבר מחדש:", shouldReconnect);
       if (shouldReconnect) startBot();
     } else if (connection === "open") {
@@ -137,7 +146,6 @@ async function reply(sock, msg, text) {
 async function handleCommand(sock, msg, chatId, body) {
   const bodyLower = body.trim().toLowerCase();
 
-  // ─── !help ────────────────────────────────────────────
   if (bodyLower === "!help") {
     await reply(sock, msg,
       `🤖 *WhatsApp Summarizer Bot*\n\n` +
@@ -152,7 +160,6 @@ async function handleCommand(sock, msg, chatId, body) {
     return;
   }
 
-  // ─── !test ────────────────────────────────────────────
   if (bodyLower === "!test") {
     await reply(sock, msg, "🔄 בודק את כל המערכת...");
     try {
@@ -170,7 +177,6 @@ async function handleCommand(sock, msg, chatId, body) {
     return;
   }
 
-  // ─── !ask ─────────────────────────────────────────────
   const askMatch = body.trim().match(/^!ask\s+(.+)$/i);
   if (askMatch) {
     const question = askMatch[1];
@@ -179,7 +185,7 @@ async function handleCommand(sock, msg, chatId, body) {
     await reply(sock, msg, "🤔 מחפש תשובה...");
     try {
       const answer = await callAI([
-        { role: "system", content: `You are an intelligent assistant that analyzes WhatsApp conversations. Always reply in Hebrew. Think deeply, make logical inferences, read between the lines, and understand context.` },
+        { role: "system", content: `You are an intelligent assistant that analyzes WhatsApp conversations. Always reply in Hebrew.` },
         { role: "user", content: `Based on this chat:\n\n${formatMessages(history.slice(-500))}\n\nAnswer: ${question}` }
       ]);
       await reply(sock, msg, `💬 *תשובה:*\n\n${answer}`);
@@ -189,7 +195,6 @@ async function handleCommand(sock, msg, chatId, body) {
     return;
   }
 
-  // ─── !leaderboard ─────────────────────────────────────
   if (bodyLower === "!leaderboard") {
     const history = messageStore.get(chatId) || [];
     if (!history.length) { await reply(sock, msg, "⚠️ אין הודעות שמורות."); return; }
@@ -218,7 +223,6 @@ async function handleCommand(sock, msg, chatId, body) {
     return;
   }
 
-  // ─── !mood ────────────────────────────────────────────
   if (bodyLower.startsWith("!mood")) {
     const history = messageStore.get(chatId) || [];
     if (!history.length) { await reply(sock, msg, "⚠️ אין הודעות שמורות."); return; }
@@ -235,7 +239,6 @@ async function handleCommand(sock, msg, chatId, body) {
     return;
   }
 
-  // ─── !judge ───────────────────────────────────────────
   const judgeMatch = body.trim().match(/^!judge\s+(.+)$/i);
   if (judgeMatch) {
     const question = judgeMatch[1];
@@ -254,7 +257,6 @@ async function handleCommand(sock, msg, chatId, body) {
     return;
   }
 
-  // ─── !summarize ───────────────────────────────────────
   const summarizeMatch = bodyLower.match(/^!summarize\s+(\d+)(m|h|d)$/);
   if (!summarizeMatch) return;
 
@@ -286,8 +288,7 @@ async function handleCommand(sock, msg, chatId, body) {
   }
 }
 
-// ─── HTTP Server (for Render) ─────────────────────────────
-const http = require("http");
+// ─── HTTP Server ──────────────────────────────────────────
 http.createServer((req, res) => res.end("Bot is running!")).listen(process.env.PORT || 3000);
 
 // ─── Start ────────────────────────────────────────────────
