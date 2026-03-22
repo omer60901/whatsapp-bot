@@ -1,9 +1,9 @@
+require("dotenv").config();
 const { Client, LocalAuth } = require("whatsapp-web.js");
 const qrcode = require("qrcode-terminal");
 const Groq = require("groq-sdk");
 
 // ─── Config ───────────────────────────────────────────────
-require("dotenv").config();
 const GROQ_KEYS = [
   process.env.GROQ_KEY_1,
   process.env.GROQ_KEY_2,
@@ -54,7 +54,8 @@ const client = new Client({
   authStrategy: new LocalAuth({ clientId: "summarizer-bot" }),
   puppeteer: {
     headless: true,
-    args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
+    args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
   },
 });
 
@@ -78,7 +79,7 @@ client.on("ready", async () => {
   const chats = await client.getChats();
   for (const chat of chats) {
     try {
-      const messages = await chat.fetchMessages({ limit: 250 });
+      const messages = await chat.fetchMessages({ limit: 500 });
       for (const msg of messages) await storeMessage(msg);
       console.log(`📂 Loaded ${messages.length} from: ${chat.name || chat.id._serialized}`);
     } catch (e) {}
@@ -189,11 +190,9 @@ async function handleCommand(msg) {
       await msg.reply(`❌ *AI לא עובד!*\nשגיאה: ${err.message}`);
       return;
     }
-
     const chat = await msg.getChat();
     const history = messageStore.get(chat.id._serialized) || [];
     await msg.reply(`✅ *היסטוריה:* ${history.length} הודעות שמורות`);
-
     const start = Date.now();
     await callAI([
       { role: "system", content: "Reply in Hebrew." },
@@ -210,16 +209,12 @@ async function handleCommand(msg) {
     const question = askMatch[1];
     const chat = await msg.getChat();
     const history = messageStore.get(chat.id._serialized) || [];
-
     if (!history.length) { await msg.reply("⚠️ אין הודעות שמורות."); return; }
-
     await msg.reply("🤔 מחפש תשובה...");
-    const chatLines = formatMessages(history.slice(-500));
-
     try {
       const answer = await callAI([
         { role: "system", content: `You are an intelligent assistant that analyzes WhatsApp conversations. Always reply in Hebrew. Think deeply, make logical inferences, read between the lines, and understand context. Be smart and analytical.` },
-        { role: "user", content: `Based on this chat:\n\n${chatLines}\n\nAnswer: ${question}` }
+        { role: "user", content: `Based on this chat:\n\n${formatMessages(history.slice(-500))}\n\nAnswer: ${question}` }
       ]);
       await msg.reply(`💬 *תשובה:*\n\n${answer}`);
     } catch (err) {
@@ -233,7 +228,6 @@ async function handleCommand(msg) {
   if (bodyLower === "!leaderboard") {
     const chat = await msg.getChat();
     const history = messageStore.get(chat.id._serialized) || [];
-
     if (!history.length) { await msg.reply("⚠️ אין הודעות שמורות."); return; }
 
     const stats = {};
@@ -246,7 +240,6 @@ async function handleCommand(msg) {
 
     const sorted = Object.entries(stats).sort((a, b) => b[1].messages - a[1].messages);
     const medals = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"];
-
     let text = `🏆 *לוח המובילים*\n\n`;
     sorted.slice(0, 10).forEach(([sender, s], i) => {
       text += `${medals[i]} *${sender}*\n   💬 ${s.messages} הודעות | 📝 ${s.words} מילים | 😂 ${s.emojis} אמוג'ים\n\n`;
@@ -257,7 +250,6 @@ async function handleCommand(msg) {
     const peakHour = hourCounts.indexOf(Math.max(...hourCounts));
     text += `⏰ *שעת השיא:* ${peakHour}:00-${peakHour + 1}:00\n`;
     text += `📊 *סה"כ הודעות:* ${history.length}`;
-
     await msg.reply(text);
     return;
   }
@@ -266,7 +258,6 @@ async function handleCommand(msg) {
   if (bodyLower.startsWith("!mood")) {
     const chat = await msg.getChat();
     const history = messageStore.get(chat.id._serialized) || [];
-
     if (!history.length) { await msg.reply("⚠️ אין הודעות שמורות."); return; }
 
     const mentionedContacts = await msg.getMentions();
@@ -286,7 +277,6 @@ async function handleCommand(msg) {
     }
 
     await msg.reply(targetName ? `🔍 מנתח את המצב רוח של ${targetName}...` : "🔍 מנתח את המצב רוח של הקבוצה...");
-
     try {
       const mood = await callAI([
         { role: "system", content: `You are a mood analyzer for WhatsApp chats. Always reply in Hebrew. Give a fun mood breakdown with emojis and percentages, a one-sentence personality description, and one funny observation. Be sarcastic and fun.` },
@@ -307,11 +297,8 @@ async function handleCommand(msg) {
     const question = judgeMatch[1];
     const chat = await msg.getChat();
     const history = messageStore.get(chat.id._serialized) || [];
-
     if (!history.length) { await msg.reply("⚠️ אין הודעות שמורות."); return; }
-
     await msg.reply("⚖️ שופט...");
-
     try {
       const verdict = await callAI([
         { role: "system", content: `You are a dramatic TV judge analyzing a WhatsApp chat. Always reply in Hebrew. Answer the question based on the chat history. Give a confident verdict with funny reasoning. Be dramatic and savage. End with a strong one-liner.` },
@@ -331,7 +318,6 @@ async function handleCommand(msg) {
 
   const amount = parseInt(summarizeMatch[1]);
   const unit = summarizeMatch[2];
-
   let ms;
   if (unit === "m") ms = amount * 60 * 1000;
   else if (unit === "h") ms = amount * 60 * 60 * 1000;
@@ -346,7 +332,6 @@ async function handleCommand(msg) {
   const filtered = history.filter((m) => m.timestamp >= cutoff);
 
   if (!filtered.length) { await msg.reply(`⚠️ לא נמצאו הודעות מה-${timeLabel} האחרונות.`); return; }
-
   await msg.reply(`⏳ מסכם את ה-${timeLabel} האחרונות (${filtered.length} הודעות)...`);
 
   try {
