@@ -55,7 +55,16 @@ const client = new Client({
   puppeteer: {
     headless: true,
     executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
-    args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
+    protocolTimeout: 60000,
+    args: [
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-dev-shm-usage",
+      "--disable-gpu",
+      "--no-first-run",
+      "--no-zygote",
+      "--single-process",
+    ],
   },
 });
 
@@ -74,17 +83,6 @@ client.on("ready", async () => {
   console.log("  !judge [שאלה]   → שפוט משהו מהצ'אט");
   console.log("  !test           → בדוק שהכל עובד");
   console.log("  !help           → עזרה\n");
-
-  console.log("📂 Loading chat history...");
-  const chats = await client.getChats();
-  for (const chat of chats) {
-    try {
-      const messages = await chat.fetchMessages({ limit: 500 });
-      for (const msg of messages) await storeMessage(msg);
-      console.log(`📂 Loaded ${messages.length} from: ${chat.name || chat.id._serialized}`);
-    } catch (e) {}
-  }
-  console.log("✅ History loaded!");
 });
 
 client.on("auth_failure", () => {
@@ -348,7 +346,6 @@ async function handleCommand(msg) {
 
 // ─── Start ────────────────────────────────────────────────
 console.log("🚀 Starting WhatsApp Summarizer Bot (Groq - 5 accounts, 7 models!)...");
-// Keep Render happy with a dummy HTTP server
 const http = require("http");
 http.createServer((req, res) => res.end("Bot is running!")).listen(process.env.PORT || 3000);
 client.initialize();
